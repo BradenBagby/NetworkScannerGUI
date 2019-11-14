@@ -44,6 +44,7 @@ public:
 private:
     void log(QString, LOGLEVEL);
     void portInfo(QString, bool open);
+    std::unique_ptr<PDU> _createAndSendTCP(QString hostAddr, QString destAddr, int port,bool syn, bool fin, bool psh, bool urg); //creates and sends tcp packet with specified flags set
 
    NetworkInterface *iface = nullptr; //stores network interface info for tins
 

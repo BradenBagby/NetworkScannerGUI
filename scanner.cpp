@@ -23,6 +23,43 @@ void Scanner::portInfo(QString info, bool open){
     }
 }
 
+std::unique_ptr<PDU> Scanner::_createAndSendTCP(QString hostAddr, QString destAddr, int port,bool syn, bool fin, bool psh, bool urg){
+    //Tins uses these object for addresses and network interface
+    IPv4Address dest(destAddr.toStdString());
+    IPv4Address host(hostAddr.toStdString());
+
+    //if somehow our host address changes. Should really never happen after the first time
+    if(iface == nullptr || iface->ipv4_address().to_string() != hostAddr.toStdString()){
+        iface = new NetworkInterface(host);
+        log("Host address changed to " + hostAddr, LOGLEVEL::VERBOS);
+    }
+
+
+    //used to send packet
+    PacketSender sender;
+
+
+    // create the packets. This creates an IP packet with an encapsulated TCP packet
+    IP ip = IP(dest, host) / TCP();
+
+    //configure TCP Packet
+    TCP& tcp = ip.rfind_pdu<TCP>();
+    tcp.set_flag(TCP::SYN, syn);
+    tcp.set_flag(TCP::FIN, fin);
+    tcp.set_flag(TCP::PSH, psh);
+    tcp.set_flag(TCP::URG, urg);
+    tcp.sport((rand() % 1000) + 1025); //host port doesnt matter. This just makes it between 1025 and 2025
+    tcp.dport(static_cast<uint16_t>(port)); //destination port to scan
+
+    log("Sending TCP packet to: " + destAddr + ":" + QString::number(port) + " with flags: SYN=" + QString::number(syn) + " FIN=" + QString::number(fin) +" PSH=" + QString::number(psh) +" urg=" + QString::number(urg), LOGLEVEL::VERBOS);
+
+    //send and receive response
+    std::unique_ptr<PDU> response(sender.send_recv(ip, *iface));
+
+    return response;
+
+}
+
 
 
 ////////TCP (Full Handshake) SCAN
@@ -63,35 +100,9 @@ void Scanner::TCPScan(QString hostAddr, QString destAddr, int port){
 ////////SYN SCAN
 void Scanner::SynScan(QString hostAddr, QString destAddr, int port){
 
-    //Tins uses these object for addresses and network interface
-    IPv4Address dest(destAddr.toStdString());
-    IPv4Address host(hostAddr.toStdString());
 
-    //if somehow our host address changes. Should really never happen after the first time
-    if(iface == nullptr || iface->ipv4_address().to_string() != hostAddr.toStdString()){
-        iface = new NetworkInterface(host);
-        log("Host address changed to " + hostAddr, LOGLEVEL::VERBOS);
-    }
-
-
-    //used to send packet
-    PacketSender sender;
-
-
-    // create the packets. This creates an IP packet with an encapsulated TCP packet
-    IP ip = IP(dest, host) / TCP();
-
-    //configure TCP Packet
-    TCP& tcp = ip.rfind_pdu<TCP>();
-    tcp.set_flag(TCP::SYN, 1); //enable SYN flag for syn scan
-    tcp.sport((rand() % 1000) + 1025); //host port doesnt matter. This just makes it between 1025 and 2025
-    tcp.dport(static_cast<uint16_t>(port)); //destination port to scan
-
-    log("Sending TCP packet with SYN Flag enabled to destination: " + destAddr + ":" + QString::number(port), LOGLEVEL::VERBOS);
-
-    //send and receive response
-    std::unique_ptr<PDU> response(sender.send_recv(ip, *iface));
-
+    //enable syn flag for syn scan.
+    std::unique_ptr<PDU> response = _createAndSendTCP(hostAddr,destAddr, port,true, false,false,false);
 
 
     if(response == nullptr){
@@ -142,36 +153,9 @@ void Scanner::SynScan(QString hostAddr, QString destAddr, int port){
     ////////FIN SCAN
     void Scanner::FINScan(QString hostAddr, QString destAddr, int port){
 
-        //Tins uses these object for addresses and network interface
-        IPv4Address dest(destAddr.toStdString());
-        IPv4Address host(hostAddr.toStdString());
 
-        //if somehow our host address changes. Should really never happen after the first time
-        if(iface == nullptr || iface->ipv4_address().to_string() != hostAddr.toStdString()){
-            iface = new NetworkInterface(host);
-            log("Host address changed to " + hostAddr, LOGLEVEL::VERBOS);
-        }
-
-
-        //used to send packet
-        PacketSender sender;
-
-
-        // create the packets. This creates an IP packet with an encapsulated TCP packet
-        IP ip = IP(dest, host) / TCP();
-
-        //configure TCP Packet
-        TCP& tcp = ip.rfind_pdu<TCP>();
-        tcp.set_flag(TCP::FIN, 1); //enable FIN flag for FIN scan
-        tcp.sport((rand() % 1000) + 1025); //host port doesnt matter. This just makes it between 1025 and 2025
-        tcp.dport(static_cast<uint16_t>(port)); //destination port to scan
-
-        log("Sending TCP packet with FIN Flag enabled to destination: " + destAddr + ":" + QString::number(port), LOGLEVEL::VERBOS);
-
-        //send and receive response
-        std::unique_ptr<PDU> response(sender.send_recv(ip, *iface));
-
-
+        //enabel the FIN flag for a FIN scan
+     std::unique_ptr<PDU> response = _createAndSendTCP(hostAddr,destAddr, port,false, true,false,false);
 
         if(response == nullptr){
             portInfo("OPEN - no response",false);
@@ -210,38 +194,9 @@ void Scanner::SynScan(QString hostAddr, QString destAddr, int port){
     ////////XMas SCAN
     void Scanner::XMASScan(QString hostAddr, QString destAddr, int port){
 
-        //Tins uses these object for addresses and network interface
-        IPv4Address dest(destAddr.toStdString());
-        IPv4Address host(hostAddr.toStdString());
 
-        //if somehow our host address changes. Should really never happen after the first time
-        if(iface == nullptr || iface->ipv4_address().to_string() != hostAddr.toStdString()){
-            iface = new NetworkInterface(host);
-            log("Host address changed to " + hostAddr, LOGLEVEL::VERBOS);
-        }
-
-
-        //used to send packet
-        PacketSender sender;
-
-
-        // create the packets. This creates an IP packet with an encapsulated TCP packet
-        IP ip = IP(dest, host) / TCP();
-
-        //configure TCP Packet
-        TCP& tcp = ip.rfind_pdu<TCP>();
-        tcp.set_flag(TCP::FIN, 1); //enable FIN flag for XMAS scan
-        tcp.set_flag(TCP::PSH, 1); //enable PSH flag for XMAS scan
-        tcp.set_flag(TCP::URG, 1); //enable URG flag for XMAS scan
-        tcp.sport((rand() % 1000) + 1025); //host port doesnt matter. This just makes it between 1025 and 2025
-        tcp.dport(static_cast<uint16_t>(port)); //destination port to scan
-
-        log("Sending TCP packet with FIN, PSH, and URG Flag enabled to destination: " + destAddr + ":" + QString::number(port), LOGLEVEL::VERBOS);
-
-        //send and receive response
-        std::unique_ptr<PDU> response(sender.send_recv(ip, *iface));
-
-
+        //enabel the FIN, PSH, and URG flags for a XMas scan
+     std::unique_ptr<PDU> response = _createAndSendTCP(hostAddr,destAddr, port,false, true,true,true);
 
         if(response == nullptr){
             portInfo("OPEN - no response",false);
