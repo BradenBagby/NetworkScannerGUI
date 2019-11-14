@@ -3,6 +3,10 @@
 
 #include <QMainWindow>
 #include "scanner.h"
+#include <iostream>
+
+using namespace Scanning;
+using namespace std;
 
 namespace Ui {
 class MainWindow;

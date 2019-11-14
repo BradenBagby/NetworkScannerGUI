@@ -15,12 +15,47 @@ void Scanner::log(QString log, LOGLEVEL logLevelIn){
     }
 }
 
+void Scanner::portInfo(QString info, bool open){
+
+    //only emit this info if user has decided to view all port info or the port is open
+    if(!displayOnlyOpenPorts || open){
+        emit PortInfo(info);
+    }
+}
 
 
 
+////////TCP (Full Handshake) SCAN
+void Scanner::TCPScan(QString hostAddr, QString destAddr, int port){
+       int sock = 0;
+       struct sockaddr_in serv_addr;
+       if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+       {
+           log("ERROR - failed to open socket to TCPScan host: " + destAddr + ":" + QString::number(port), LOGLEVEL::ERRORS);
+           return;
+       }
 
+       serv_addr.sin_family = AF_INET;
+       serv_addr.sin_port = htons(static_cast<uint16_t>(port));
 
+       if(inet_pton(AF_INET, destAddr.toStdString().c_str(), &serv_addr.sin_addr)<=0)
+       {
+           log("ERROR - failed to convert destAddress to binary form for host: " + destAddr + ":" + QString::number(port), LOGLEVEL::ERRORS);
+           return;
+       }
 
+    log("Trying to connect using TCP (full handshake) to destination: " + destAddr + ":" + QString::number(port), LOGLEVEL::VERBOS);
+
+       if(::connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) >= 0){
+        log("Connection using TCP (full handshake) established with : " + destAddr + ":" + QString::number(port), LOGLEVEL::VERBOS);
+        portInfo("OPEN",true);
+       }else{
+       log("Connection using TCP (full handshake) timeout with : " + destAddr + ":" + QString::number(port), LOGLEVEL::VERBOS);
+       portInfo("CLOSED",false);
+       }
+       close(sock);
+
+}
 
 
 
@@ -28,14 +63,23 @@ void Scanner::log(QString log, LOGLEVEL logLevelIn){
 ////////SYN SCAN
 void Scanner::SynScan(QString hostAddr, QString destAddr, int port){
 
-    //Tins uses this object for addresses to build the packets
+    //Tins uses these object for addresses and network interface
     IPv4Address dest(destAddr.toStdString());
+    IPv4Address host(hostAddr.toStdString());
+
+    //if somehow our host address changes. Should really never happen after the first time
+    if(iface == nullptr || iface->ipv4_address().to_string() != hostAddr.toStdString()){
+        iface = new NetworkInterface(host);
+        log("Host address changed to " + hostAddr, LOGLEVEL::VERBOS);
+    }
+
 
     //used to send packet
     PacketSender sender;
 
+
     // create the packets. This creates an IP packet with an encapsulated TCP packet
-    IP ip = IP(dest, hostAddr.toStdString()) / TCP();
+    IP ip = IP(dest, host) / TCP();
 
     //configure TCP Packet
     TCP& tcp = ip.rfind_pdu<TCP>();
@@ -46,7 +90,7 @@ void Scanner::SynScan(QString hostAddr, QString destAddr, int port){
     log("Sending TCP packet with SYN Flag enabled to destination: " + destAddr + ":" + QString::number(port), LOGLEVEL::VERBOS);
 
     //send and receive response
-    std::unique_ptr<PDU> response(sender.send_recv(ip, hostAddr.toStdString()));
+    std::unique_ptr<PDU> response(sender.send_recv(ip, *iface));
 
 
 
