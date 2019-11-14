@@ -308,6 +308,42 @@ void Scanner::XMASScan(QString destAddr, int port){
         return;
     }
 }
+void Scanner::CustomPacket(QString destAddr, int port,bool syn, bool fin, bool psh, bool urg,int numberOfPackets){
+
+    for(int i = 0; i < numberOfPackets; i ++){
+        emit PortInfo("---CUSTOM PACKET: " + QString::number(i));
+        std::unique_ptr<PDU> response = _createAndSendTCP(destAddr, port,syn, fin,psh,urg);
+        emit PortInfo("Sending TCP Packet to " + destAddr + +":" + QString::number(port) + " with | SYN: " + QString::number(syn) + " FIN: " + QString::number(fin) + " PSH: " + QString::number(psh) + " URG: " + QString::number(urg));
+        QString portInfo = "";
+        if(response == nullptr){
+        portInfo = "Received no response.";
+        }else{
+            try {
+
+
+                //get protocol packets from response
+                IP& ip_res = response->rfind_pdu<IP>();
+                TCP& tcp_res = response->rfind_pdu<TCP>();
+
+
+                //check response to see if port is open or closed
+
+                if(tcp_res.sport() == port) {
+                    portInfo = ("Received response from " + destAddr + +":" + QString::number(port) + " with | syn: " + QString::number(tcp_res.get_flag(TCP::SYN)) + " ack: " + QString::number(tcp_res.get_flag(TCP::ACK)) + " rst: " + QString::number(tcp_res.get_flag(TCP::RST)));
+                }else{
+                    portInfo = "Received response with different port. ERROR";
+                }
+            } catch (...) {
+
+                portInfo = "Received response that wasnt a TCP packet. Possibly ICMP.";
+            }
+
+        }
+
+        emit PortInfo(portInfo);
+    }
+
+}
 
 
 

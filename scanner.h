@@ -45,6 +45,7 @@ public:
     LOGLEVEL logLevel = VERBOS;
     void Scan(QString scanType, IPv4Range destinations, QList<int> ports);
     void SetInterface(QString ip); //configures interface for given ip
+    void CustomPacket(QString destAddr, int port,bool syn, bool fin, bool psh, bool urg, int numberOfPackets);
 
 
 
@@ -60,6 +61,7 @@ private:
     void log(QString, LOGLEVEL);
     void portInfo(QString,int,QString, bool open);
     void _waitForScanComplete(QList<QFuture<void>> &futures); //a thread that just waits for all scans to complete then it emits a signal
+
 
 
 

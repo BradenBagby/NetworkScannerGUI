@@ -4,6 +4,7 @@
 #include <QMainWindow>
 #include "scanner.h"
 #include <iostream>
+#include <QtConcurrent/QtConcurrent>
 
 using namespace Scanning;
 using namespace std;
@@ -32,6 +33,7 @@ private slots:
     void on_comboBox_scanType_currentIndexChanged(const QString &arg1);
     void on_comboBox_logLevel_currentTextChanged(const QString &arg1);
     void on_checkBox_openPortsOnly_stateChanged(int arg1);
+    void on_pushButton_sendTCP_clicked();
 };
 
 #endif // MAINWINDOW_H

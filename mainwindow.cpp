@@ -44,7 +44,7 @@ void MainWindow::ScanComplete(QString info){
     ui->textBrowser_scanInfo->append(info);
     QString scanType = ui->comboBox_scanType->currentText();
     ui->textBrowser_scanInfo->append("--------------Scan Complete: <b>" + scanType +"</b>--------------------");
-      ui->textBrowser_log->append("--------------Scan Complete: <b>" + scanType +"</b>--------------------");
+    ui->textBrowser_log->append("--------------Scan Complete: <b>" + scanType +"</b>--------------------");
 
     //re-enable ui
     ui->groupBox_configureScan->setEnabled(true);
@@ -59,7 +59,7 @@ void MainWindow::on_pushButton_clicked()
 
     QString scanType = ui->comboBox_scanType->currentText();
     ui->textBrowser_scanInfo->append("--------------NEW SCAN: <b>" + scanType +"</b>--------------------");
-     ui->textBrowser_log->append("--------------NEW SCAN: <b>" + scanType +"</b>--------------------");
+    ui->textBrowser_log->append("--------------NEW SCAN: <b>" + scanType +"</b>--------------------");
 
     //get ip range
 
@@ -138,4 +138,28 @@ void MainWindow::on_comboBox_logLevel_currentTextChanged(const QString &current)
 void MainWindow::on_checkBox_openPortsOnly_stateChanged(int arg1)
 {
     scanner.displayOnlyOpenPorts = arg1;
+}
+
+void MainWindow::on_pushButton_sendTCP_clicked()
+{
+    bool syn = ui->checkBox_custom_syn->isChecked();
+    bool fin = ui->checkBox_custom_fin->isChecked();
+    bool psh = ui->checkBox_custom_psh->isChecked();
+    bool urg = ui->checkBox_custom_urg->isChecked();
+
+    QString destination = ui->textEdit_custom_destination->toPlainText();
+    int packetCount = ui->textEdit_custom_packetCount->toPlainText().toInt();
+    int port = ui->textEdit_custom_port->toPlainText().toInt();
+
+    ui->groupBox_configureScan->setEnabled(false);
+    ui->groupBox_custom->setEnabled(false);
+    ui->groupBox_displayOptions->setEnabled(false);
+    ui->groupBox_custom->setEnabled(false);
+    qApp->processEvents(); //update ui
+    scanner.CustomPacket(destination,port,syn,fin,psh,urg,packetCount);
+    ui->groupBox_configureScan->setEnabled(true);
+    ui->groupBox_custom->setEnabled(true);
+    ui->groupBox_displayOptions->setEnabled(true);
+    ui->groupBox_custom->setEnabled(true);
+
 }
