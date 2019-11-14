@@ -38,6 +38,8 @@ public:
     LOGLEVEL logLevel = VERBOS;
     void SynScan(QString hostAddr, QString destAddr, int port); //syn scan sends first packet in the tcp three way handshake. if gets ack/syn back, the port is open. Root privalages would be required on the computer
     void TCPScan(QString hostAddr, QString destAddr, int port); //TCP Scan simply trys to connect to a port with full tcp handshake and sees if connection succeeds or not.
+     void FINScan(QString hostAddr, QString destAddr, int port);
+     void XMASScan(QString hostAddr, QString destAddr, int port);
 
 private:
     void log(QString, LOGLEVEL);

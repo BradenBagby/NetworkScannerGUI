@@ -19,9 +19,18 @@ MainWindow::MainWindow(QWidget *parent) :
           scanner.SynScan("192.168.0.25","192.168.0.31",23);
                     scanner.SynScan("192.168.0.25","192.168.0.31",23);
                               scanner.SynScan("192.168.0.25","192.168.0.31",23);
+                              cout << "______________" << endl;
                               scanner.TCPScan("192.168.0.25","192.168.0.31",22);
                                 scanner.TCPScan("192.168.0.25","192.168.0.31",24);
                                   scanner.TCPScan("192.168.0.25","192.168.0.31",28);
+                                     cout << "______________" << endl;
+                                     scanner.FINScan("192.168.0.25","192.168.0.31",22);
+                                       scanner.FINScan("192.168.0.25","192.168.0.31",24);
+                                         scanner.FINScan("192.168.0.25","192.168.0.31",28);
+                                         cout << "______________" << endl;
+                                         scanner.XMASScan("192.168.0.25","192.168.0.31",22);
+                                           scanner.XMASScan("192.168.0.25","192.168.0.31",24);
+                                             scanner.XMASScan("192.168.0.25","192.168.0.31",28);
 }
 
 MainWindow::~MainWindow()
@@ -30,7 +39,7 @@ MainWindow::~MainWindow()
 }
 
 void MainWindow::Log(QString log){
-    cout << log.toStdString() << endl;
+   // cout << log.toStdString() << endl;
 }
 
 void MainWindow::PortInfo(QString info){

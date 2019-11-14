@@ -95,7 +95,7 @@ void Scanner::SynScan(QString hostAddr, QString destAddr, int port){
 
 
     if(response == nullptr){
-        portInfo("CLOSED - no response",false);
+        portInfo("CLOSED - no response / filtered",false);
         log("ERROR - no response from: " + destAddr + ":" + QString::number(port), LOGLEVEL::ERRORS);
         return;}
 
@@ -132,9 +132,146 @@ void Scanner::SynScan(QString hostAddr, QString destAddr, int port){
         }
     }
     } catch (...) {
-        portInfo("CLOSED - bad response",false);
-              log("ERROR - bad response (failed parsing packets) from: " + destAddr + ":" + QString::number(port), LOGLEVEL::ERRORS);
+        portInfo("CLOSED - non IP/TCP response - clsoed/filtered",false);
+              log("bad response (failed parsing packets) from. Failed parsing resonse packet as IP/TCP so possibly an ICMP packet meaning port is filtered: " + destAddr + ":" + QString::number(port), LOGLEVEL::VERBOS);
         return;
+    }
+}
+
+
+    ////////FIN SCAN
+    void Scanner::FINScan(QString hostAddr, QString destAddr, int port){
+
+        //Tins uses these object for addresses and network interface
+        IPv4Address dest(destAddr.toStdString());
+        IPv4Address host(hostAddr.toStdString());
+
+        //if somehow our host address changes. Should really never happen after the first time
+        if(iface == nullptr || iface->ipv4_address().to_string() != hostAddr.toStdString()){
+            iface = new NetworkInterface(host);
+            log("Host address changed to " + hostAddr, LOGLEVEL::VERBOS);
+        }
+
+
+        //used to send packet
+        PacketSender sender;
+
+
+        // create the packets. This creates an IP packet with an encapsulated TCP packet
+        IP ip = IP(dest, host) / TCP();
+
+        //configure TCP Packet
+        TCP& tcp = ip.rfind_pdu<TCP>();
+        tcp.set_flag(TCP::FIN, 1); //enable FIN flag for FIN scan
+        tcp.sport((rand() % 1000) + 1025); //host port doesnt matter. This just makes it between 1025 and 2025
+        tcp.dport(static_cast<uint16_t>(port)); //destination port to scan
+
+        log("Sending TCP packet with FIN Flag enabled to destination: " + destAddr + ":" + QString::number(port), LOGLEVEL::VERBOS);
+
+        //send and receive response
+        std::unique_ptr<PDU> response(sender.send_recv(ip, *iface));
+
+
+
+        if(response == nullptr){
+            portInfo("OPEN - no response",false);
+            return;}
+
+        try {
+
+
+        //get protocol packets from response
+        IP& ip_res = response->rfind_pdu<IP>();
+         TCP& tcp_res = response->rfind_pdu<TCP>();
+
+
+        //check response to see if port is open or closed
+
+        if(tcp_res.sport() == port) {
+
+              log("Received response from " + destAddr + +":" + QString::number(port) + " with | rst: " + QString::number(tcp_res.get_flag(TCP::RST)), LOGLEVEL::VERBOS);
+
+            //if RST flag is on, the port is closed
+            if(tcp_res.get_flag(TCP::RST)) {
+               portInfo("CLOSED",false);
+                return;
+            }
+        }
+        } catch (...) {
+            portInfo("FILTERED - non IP/TCP response",false);
+                  log("bad response (failed parsing packets) from. Failed parsing resonse packet as IP/TCP so possibly an ICMP packet meaning port is filtered: " + destAddr + ":" + QString::number(port), LOGLEVEL::VERBOS);
+            return;
+        }
+    }
+
+
+
+
+    ////////XMas SCAN
+    void Scanner::XMASScan(QString hostAddr, QString destAddr, int port){
+
+        //Tins uses these object for addresses and network interface
+        IPv4Address dest(destAddr.toStdString());
+        IPv4Address host(hostAddr.toStdString());
+
+        //if somehow our host address changes. Should really never happen after the first time
+        if(iface == nullptr || iface->ipv4_address().to_string() != hostAddr.toStdString()){
+            iface = new NetworkInterface(host);
+            log("Host address changed to " + hostAddr, LOGLEVEL::VERBOS);
+        }
+
+
+        //used to send packet
+        PacketSender sender;
+
+
+        // create the packets. This creates an IP packet with an encapsulated TCP packet
+        IP ip = IP(dest, host) / TCP();
+
+        //configure TCP Packet
+        TCP& tcp = ip.rfind_pdu<TCP>();
+        tcp.set_flag(TCP::FIN, 1); //enable FIN flag for XMAS scan
+        tcp.set_flag(TCP::PSH, 1); //enable PSH flag for XMAS scan
+        tcp.set_flag(TCP::URG, 1); //enable URG flag for XMAS scan
+        tcp.sport((rand() % 1000) + 1025); //host port doesnt matter. This just makes it between 1025 and 2025
+        tcp.dport(static_cast<uint16_t>(port)); //destination port to scan
+
+        log("Sending TCP packet with FIN, PSH, and URG Flag enabled to destination: " + destAddr + ":" + QString::number(port), LOGLEVEL::VERBOS);
+
+        //send and receive response
+        std::unique_ptr<PDU> response(sender.send_recv(ip, *iface));
+
+
+
+        if(response == nullptr){
+            portInfo("OPEN - no response",false);
+            return;}
+
+        try {
+
+
+        //get protocol packets from response
+        IP& ip_res = response->rfind_pdu<IP>();
+         TCP& tcp_res = response->rfind_pdu<TCP>();
+
+
+        //check response to see if port is open or closed
+
+        if(tcp_res.sport() == port) {
+
+              log("Received response from " + destAddr + +":" + QString::number(port) + " with | rst: " + QString::number(tcp_res.get_flag(TCP::RST)), LOGLEVEL::VERBOS);
+
+            //if RST flag is on, the port is closed
+            if(tcp_res.get_flag(TCP::RST)) {
+               portInfo("CLOSED",false);
+                return;
+            }
+        }
+        } catch (...) {
+            portInfo("FILTERED - non IP/TCP response",false);
+                  log("bad response (failed parsing packets) from. Failed parsing resonse packet as IP/TCP so possibly an ICMP packet meaning port is filtered: " + destAddr + ":" + QString::number(port), LOGLEVEL::VERBOS);
+            return;
+        }
     }
 
 
@@ -142,7 +279,8 @@ void Scanner::SynScan(QString hostAddr, QString destAddr, int port){
 
 
 
-}
+
+
 
 
 
