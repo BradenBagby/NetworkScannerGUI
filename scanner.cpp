@@ -2,6 +2,11 @@
 
 using namespace Scanning;
 
+const QString Scanner::SYN_SCAN_INFO = "SYN scan info blah blah";
+const QString Scanner::TCP_SCAN_INFO = "TCP scan info blah blah";
+const QString Scanner::FIN_SCAN_INFO = "FIN scan info blah blah";
+const QString Scanner::XMAS_SCAN_INFO = "XMAS scan info blah blah";
+
 Scanner::Scanner()
 {
 
@@ -11,15 +16,15 @@ void Scanner::log(QString log, LOGLEVEL logLevelIn){
 
     //make sure we want to display this log
     if(logLevelIn >= logLevel){
-        emit Log(log);
+        emit Log((logLevelIn == ::VERBOS ? "<font color='black'>" : "<font color='red'>") + log + "</font>");
     }
 }
 
-void Scanner::portInfo(QString info, bool open){
+void Scanner::portInfo(QString destAddr, int port, QString info, bool open){
 
     //only emit this info if user has decided to view all port info or the port is open
     if(!displayOnlyOpenPorts || open){
-        emit PortInfo(info);
+        emit PortInfo("<b><font color='black'>" + destAddr + ":</font>" + (open ? "<font color='green'>" : "<font color='red'>") + QString::number(port) +  "<font></b> " + info);
     }
 }
 
@@ -85,10 +90,10 @@ void Scanner::TCPScan(QString hostAddr, QString destAddr, int port){
 
        if(::connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) >= 0){
         log("Connection using TCP (full handshake) established with : " + destAddr + ":" + QString::number(port), LOGLEVEL::VERBOS);
-        portInfo("OPEN",true);
+        portInfo(destAddr,port,"OPEN",true);
        }else{
        log("Connection using TCP (full handshake) timeout with : " + destAddr + ":" + QString::number(port), LOGLEVEL::VERBOS);
-       portInfo("CLOSED",false);
+       portInfo(destAddr,port,"CLOSED",false);
        }
        close(sock);
 
@@ -106,7 +111,7 @@ void Scanner::SynScan(QString hostAddr, QString destAddr, int port){
 
 
     if(response == nullptr){
-        portInfo("CLOSED - no response / filtered",false);
+        portInfo(destAddr,port,"CLOSED - no response / filtered",false);
         log("ERROR - no response from: " + destAddr + ":" + QString::number(port), LOGLEVEL::ERRORS);
         return;}
 
@@ -126,24 +131,24 @@ void Scanner::SynScan(QString hostAddr, QString destAddr, int port){
 
         //if RST flag is on, the port is closed
         if(tcp_res.get_flag(TCP::RST)) {
-           portInfo("CLOSED",false);
+           portInfo(destAddr,port,"CLOSED",false);
             return;
         }
 
         //if SYN flag and ACK flag is on the port is open and a service is running
         else if(tcp_res.flags() == (TCP::SYN && TCP::ACK)) {
-           portInfo("OPEN - service running",true);
+           portInfo(destAddr,port,"OPEN - service running",true);
             return;
         }
 
         //if SYN flag or ACK flag is on the port is definitely open
         else if(tcp_res.flags() == (TCP::SYN | TCP::ACK)) {
-           portInfo("OPEN",true);
+           portInfo(destAddr,port,"OPEN",true);
             return;
         }
     }
     } catch (...) {
-        portInfo("CLOSED - non IP/TCP response - clsoed/filtered",false);
+        portInfo(destAddr,port,"CLOSED - non IP/TCP response - clsoed/filtered",false);
               log("bad response (failed parsing packets) from. Failed parsing resonse packet as IP/TCP so possibly an ICMP packet meaning port is filtered: " + destAddr + ":" + QString::number(port), LOGLEVEL::VERBOS);
         return;
     }
@@ -158,7 +163,7 @@ void Scanner::SynScan(QString hostAddr, QString destAddr, int port){
      std::unique_ptr<PDU> response = _createAndSendTCP(hostAddr,destAddr, port,false, true,false,false);
 
         if(response == nullptr){
-            portInfo("OPEN - no response",false);
+            portInfo(destAddr,port,"OPEN - no response",true);
             return;}
 
         try {
@@ -177,12 +182,12 @@ void Scanner::SynScan(QString hostAddr, QString destAddr, int port){
 
             //if RST flag is on, the port is closed
             if(tcp_res.get_flag(TCP::RST)) {
-               portInfo("CLOSED",false);
+               portInfo(destAddr,port,"CLOSED",false);
                 return;
             }
         }
         } catch (...) {
-            portInfo("FILTERED - non IP/TCP response",false);
+            portInfo(destAddr,port,"FILTERED - non IP/TCP response",false);
                   log("bad response (failed parsing packets) from. Failed parsing resonse packet as IP/TCP so possibly an ICMP packet meaning port is filtered: " + destAddr + ":" + QString::number(port), LOGLEVEL::VERBOS);
             return;
         }
@@ -199,7 +204,7 @@ void Scanner::SynScan(QString hostAddr, QString destAddr, int port){
      std::unique_ptr<PDU> response = _createAndSendTCP(hostAddr,destAddr, port,false, true,true,true);
 
         if(response == nullptr){
-            portInfo("OPEN - no response",false);
+            portInfo(destAddr,port,"OPEN - no response",true);
             return;}
 
         try {
@@ -218,12 +223,12 @@ void Scanner::SynScan(QString hostAddr, QString destAddr, int port){
 
             //if RST flag is on, the port is closed
             if(tcp_res.get_flag(TCP::RST)) {
-               portInfo("CLOSED",false);
+               portInfo(destAddr,port,"CLOSED",false);
                 return;
             }
         }
         } catch (...) {
-            portInfo("FILTERED - non IP/TCP response",false);
+            portInfo(destAddr,port,"FILTERED - non IP/TCP response",false);
                   log("bad response (failed parsing packets) from. Failed parsing resonse packet as IP/TCP so possibly an ICMP packet meaning port is filtered: " + destAddr + ":" + QString::number(port), LOGLEVEL::VERBOS);
             return;
         }

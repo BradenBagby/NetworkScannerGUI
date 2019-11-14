@@ -41,9 +41,16 @@ public:
      void FINScan(QString hostAddr, QString destAddr, int port);
      void XMASScan(QString hostAddr, QString destAddr, int port);
 
+
+     //SCANNING INFO
+     static const QString SYN_SCAN_INFO;
+     static const QString TCP_SCAN_INFO;
+     static const QString FIN_SCAN_INFO;
+     static const QString XMAS_SCAN_INFO;
+
 private:
     void log(QString, LOGLEVEL);
-    void portInfo(QString, bool open);
+    void portInfo(QString,int,QString, bool open);
     std::unique_ptr<PDU> _createAndSendTCP(QString hostAddr, QString destAddr, int port,bool syn, bool fin, bool psh, bool urg); //creates and sends tcp packet with specified flags set
 
    NetworkInterface *iface = nullptr; //stores network interface info for tins

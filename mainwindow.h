@@ -27,6 +27,8 @@ private:
 private slots:
     void Log(QString);
     void PortInfo(QString);
+    void on_pushButton_clicked();
+    void on_comboBox_scanType_currentIndexChanged(const QString &arg1);
 };
 
 #endif // MAINWINDOW_H
