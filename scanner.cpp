@@ -2,7 +2,7 @@
 
 using namespace Scanning;
 
-const QString Scanner::SYN_SCAN_INFO = "SYN scan info blah blah";
+const QString Scanner::SYN_SCAN_INFO = "SYN scan: The most popular scanning technique. It sends the first packet in a tcp handshake and uses the response to detect if the port is open/closed/filtered. Because you are only sending part of a TCP handshake, this type of scanning requires root privilages to create custom packets. If the response has a SYN and ACK flag the port is open and a service is running. If the response has either SYN or ACK flag but not both, the port is definitely open. If the response has the RST flag on, the port is closed. Finally, no response is considered as the port being closed/filtered after, for our case, 4 retransmssions.";
 const QString Scanner::TCP_SCAN_INFO = "TCP scan info blah blah";
 const QString Scanner::FIN_SCAN_INFO = "FIN scan info blah blah";
 const QString Scanner::XMAS_SCAN_INFO = "XMAS scan info blah blah";
@@ -76,19 +76,23 @@ void Scanner::Scan(QString scanType, IPv4Range destinations, QList<int> ports)
 
 
     //determine correct scan function based on user selectoin
-    auto scanFunction = &Scanner::SynScan;
-    if(scanType == "TCP Handshake"){
-        scanFunction = &Scanner::TCPScan;
-    }else if(scanType == "FIN"){
-        scanFunction = &Scanner::FINScan;
-    }else if(scanType == "XMAS"){
-        scanFunction = &Scanner::XMASScan;
-    }
+
 
     ///do scan threads
     for(auto &dest : destinations){ //loop through each ip
         for(int port : ports){ //loop through each port
-            QFuture<void> future = QtConcurrent::run(this, scanFunction,QString::fromStdString(dest.to_string()),port);
+            QFuture<void> future;
+            if(scanType == "SYN"){
+              future  = QtConcurrent::run(this, &Scanner::SynScan,QString::fromStdString(dest.to_string()),port,0);
+            }
+            else if(scanType == "TCP Handshake"){
+           future  = QtConcurrent::run(this, &Scanner::TCPScan,QString::fromStdString(dest.to_string()),port);
+            }else if(scanType == "FIN"){
+       future  = QtConcurrent::run(this, &Scanner::FINScan,QString::fromStdString(dest.to_string()),port);
+            }else if(scanType == "XMAS"){
+          future  = QtConcurrent::run(this, &Scanner::XMASScan,QString::fromStdString(dest.to_string()),port);
+            }
+
             threads.push_back(future);
         }
     }
@@ -178,7 +182,7 @@ void Scanner::TCPScan(QString destAddr, int port){
 
 
 ////////SYN SCAN
-void Scanner::SynScan(QString destAddr, int port){
+bool Scanner::SynScan(QString destAddr, int port, int retries = 0){
 
 
     //enable syn flag for syn scan.
@@ -186,9 +190,15 @@ void Scanner::SynScan(QString destAddr, int port){
 
 
     if(response == nullptr){
+        //for tcp scan, retry a couple times on no response
+        if(retries < 4){
+              log("WARNING - no response from: " + destAddr + ":" + QString::number(port) + " retransmitting to try again.", LOGLEVEL::WARNINGS);
+            return SynScan(destAddr,port,++retries);
+        }
         portInfo(destAddr,port,"CLOSED - no response / filtered",false);
-        log("WARNING - no response from: " + destAddr + ":" + QString::number(port), LOGLEVEL::WARNINGS);
-        return;}
+
+        return true;
+    }
 
     try {
 
@@ -207,25 +217,25 @@ void Scanner::SynScan(QString destAddr, int port){
             //if RST flag is on, the port is closed
             if(tcp_res.get_flag(TCP::RST)) {
                 portInfo(destAddr,port,"CLOSED",false);
-                return;
+                return true;
             }
 
             //if SYN flag and ACK flag is on the port is open and a service is running
             else if(tcp_res.flags() == (TCP::SYN && TCP::ACK)) {
                 portInfo(destAddr,port,"OPEN - service running",true);
-                return;
+                return true;
             }
 
             //if SYN flag or ACK flag is on the port is definitely open
             else if(tcp_res.flags() == (TCP::SYN | TCP::ACK)) {
                 portInfo(destAddr,port,"OPEN",true);
-                return;
+                return true;
             }
         }
     } catch (...) {
         portInfo(destAddr,port,"CLOSED - non IP/TCP response - closed/filtered",false);
         log("bad response (failed parsing packets) from. Failed parsing resonse packet as IP/TCP so possibly an ICMP packet meaning port is filtered: " + destAddr + ":" + QString::number(port), LOGLEVEL::VERBOS);
-        return;
+        return true;
     }
 }
 

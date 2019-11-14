@@ -68,7 +68,7 @@ private:
     std::unique_ptr<PDU> _createAndSendTCP(QString destAddr, int port,bool syn, bool fin, bool psh, bool urg); //creates and sends tcp packet with specified flags set
 
     //scans
-    void SynScan(QString destAddr, int port); //syn scan sends first packet in the tcp three way handshake. if gets ack/syn back, the port is open. Root privalages would be required on the computer
+    bool SynScan(QString destAddr, int port, int retries); //syn scan sends first packet in the tcp three way handshake. if gets ack/syn back, the port is open. Root privalages would be required on the computer
     void TCPScan(QString destAddr, int port); //TCP Scan simply trys to connect to a port with full tcp handshake and sees if connection succeeds or not.
     void FINScan(QString destAddr, int port);
     void XMASScan(QString destAddr, int port);
