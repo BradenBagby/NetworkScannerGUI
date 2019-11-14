@@ -2,10 +2,10 @@
 
 using namespace Scanning;
 
-const QString Scanner::SYN_SCAN_INFO = "SYN scan: The most popular scanning technique. It sends the first packet in a tcp handshake and uses the response to detect if the port is open/closed/filtered. Because you are only sending part of a TCP handshake, this type of scanning requires root privilages to create custom packets. If the response has a SYN and ACK flag the port is open and a service is running. If the response has either SYN or ACK flag but not both, the port is definitely open. If the response has the RST flag on, the port is closed. Finally, no response is considered as the port being closed/filtered after, for our case, 4 retransmssions.";
-const QString Scanner::TCP_SCAN_INFO = "TCP scan info blah blah";
-const QString Scanner::FIN_SCAN_INFO = "FIN scan info blah blah";
-const QString Scanner::XMAS_SCAN_INFO = "XMAS scan info blah blah";
+const QString Scanner::SYN_SCAN_INFO = "SYN scan: The most popular scanning technique. It sends the first packet in a tcp handshake by setting the SYN flag, and uses the response to detect if the port is open/closed/filtered. Because you are only sending part of a TCP handshake, this type of scanning requires root privilages to create custom packets. If the response has a SYN and ACK flag the port is open and a service is running. If the response has either SYN or ACK flag but not both, the port is definitely open. If the response has the RST flag on, the port is closed. Finally, no response is considered as the port being closed/filtered after, for our case, 4 retransmssions.";
+const QString Scanner::TCP_SCAN_INFO = "TCP scan. This scan is the easiest to program and to understand. It attempts to complete a tcp handshake with the port. If the handshake is successful, port is open. If unsuccessful, port is closed. This program uses Linux Sockets.";
+const QString Scanner::FIN_SCAN_INFO = "FIN scan. Simply sets the FIN flag of a tcp packet. This type of scan is more stealthy than a syn scan but the response cannot be as trusted as no response is considered an open port. Microsoft Windows will label all ports as closed with this type of scan.";
+const QString Scanner::XMAS_SCAN_INFO = "XMAS scan. Sets the FIN, PSH, and URG flags of a tcp packet. Called XMAS scan because it lights the packet up like a christmas tree. Similar to the FIN scan, this type of scan is more stealthy than a syn scan but the response cannot be as trusted as no response is considered an open port. Microsoft Windows will label all ports as closed with this type of scan.";
 
 Scanner::Scanner()
 {
