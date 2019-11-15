@@ -479,7 +479,7 @@ p, li { white-space: pre-wrap; }
       </layout>
      </item>
      <item>
-      <widget class="QPushButton" name="pushButton">
+      <widget class="QPushButton" name="scanButton">
        <property name="text">
         <string>Start Scan</string>
        </property>

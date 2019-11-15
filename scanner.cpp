@@ -2,6 +2,7 @@
 
 using namespace Scanning;
 
+///info on each scan. Displayed to the user under the 'Cool Info' group box
 const QString Scanner::SYN_SCAN_INFO = "SYN scan: The most popular scanning technique. It sends the first packet in a tcp handshake by setting the SYN flag, and uses the response to detect if the port is open/closed/filtered. Because you are only sending part of a TCP handshake, this type of scanning requires root privilages to create custom packets. If the response has a SYN and ACK flag the port is open and a service is running. If the response has either SYN or ACK flag but not both, the port is definitely open. If the response has the RST flag on, the port is closed. Finally, no response is considered as the port being closed/filtered after, for our case, 4 retransmssions.";
 const QString Scanner::TCP_SCAN_INFO = "TCP scan. This scan is the easiest to program and to understand. It attempts to complete a tcp handshake with the port. If the handshake is successful, port is open. If unsuccessful, port is closed. This program uses Linux Sockets.";
 const QString Scanner::FIN_SCAN_INFO = "FIN scan. Simply sets the FIN flag of a tcp packet. This type of scan is more stealthy than a syn scan but the response cannot be as trusted as no response is considered an open port. Microsoft Windows will label all ports as closed with this type of scan.";
@@ -11,8 +12,24 @@ Scanner::Scanner()
 {
 
 }
-#include <iostream>
 
+
+//********************************************************************
+//
+// Log function
+//
+// This function emits a log signal with the correct formatting depending on the logLevel
+//
+// Return Value
+// ------------
+// void
+//
+// Value Parameters
+// ----------------
+// log      QString     the log information
+// logLevelIn   LOGLEVEL    the level of the log (VERBOS, WARNINGS, ERRORS)
+//
+//*******************************************************************
 void Scanner::log(QString log, LOGLEVEL logLevelIn){
     if(logLevelIn == ::ERRORS){
         mutex.lock();
@@ -33,6 +50,24 @@ void Scanner::log(QString log, LOGLEVEL logLevelIn){
     }
 }
 
+//********************************************************************
+//
+// portInfo function
+//
+// This function emits a portInfo signal with correct formatting given the parameters
+//
+// Return Value
+// ------------
+// void
+//
+// Value Parameters
+// ----------------
+//QString       destAddr  the destination address
+//int           port       the destination port
+//QString       info        the info about the port. Open/Closed/Filtered/etc
+//bool          open        used to determine if we should emit the signal or not. If user has selected to see only open ports and this is false, we will not emit
+//
+//*******************************************************************
 void Scanner::portInfo(QString destAddr, int port, QString info, bool open){
 
     //keeping info about whole scan
@@ -49,6 +84,22 @@ void Scanner::portInfo(QString destAddr, int port, QString info, bool open){
     }
 }
 
+//********************************************************************
+//
+// Wait For Scan To Complete function
+//
+// This function takes a list of QFutures and waits for all them to complete. Then it emits a ScanComplete signal
+//
+// Return Value
+// ------------
+// void
+//
+// Reference Parameters
+// ----------------
+// QList<QFuture<void>>		threads		The threads to wait for to complete
+//
+//
+//*******************************************************************
 void Scanner::_waitForScanComplete( QList<QFuture<void>> &threads){
     for(auto thread : threads){
         thread.waitForFinished();
@@ -62,12 +113,31 @@ void Scanner::_waitForScanComplete( QList<QFuture<void>> &threads){
 
 }
 
+
+//********************************************************************
+//
+// Scan Function
+//
+// This function takes a scan type, destinations, and ports and calls the correct functions to complete the desired scan
+//
+// Return Value
+// ------------
+// void
+//
+// Value Parameters
+// ----------------
+// QString		scanType		The scan type, can be SYN, TCP Handshake, FIN, or XMAS
+// IPv4Range    destinations    the destinations the user has selected to scan
+// QList<int>   ports           the ports the user has collected to scan
+//
+//
+//*******************************************************************
 void Scanner::Scan(QString scanType, IPv4Range destinations, QList<int> ports)
 {
 
     QList<QFuture<void>> threads = {};
 
-    //reset scan info
+    //reset scan info. This info is incremented throughout scan to keep track of results
     scanStartTime = std::chrono::steady_clock::now();
     openPorts = 0;
     portsScanned = 0;
@@ -83,14 +153,14 @@ void Scanner::Scan(QString scanType, IPv4Range destinations, QList<int> ports)
         for(int port : ports){ //loop through each port
             QFuture<void> future;
             if(scanType == "SYN"){
-              future  = QtConcurrent::run(this, &Scanner::SynScan,QString::fromStdString(dest.to_string()),port,0);
+                future  = QtConcurrent::run(this, &Scanner::SynScan,QString::fromStdString(dest.to_string()),port,0);
             }
             else if(scanType == "TCP Handshake"){
-           future  = QtConcurrent::run(this, &Scanner::TCPScan,QString::fromStdString(dest.to_string()),port);
+                future  = QtConcurrent::run(this, &Scanner::TCPScan,QString::fromStdString(dest.to_string()),port);
             }else if(scanType == "FIN"){
-       future  = QtConcurrent::run(this, &Scanner::FINScan,QString::fromStdString(dest.to_string()),port);
+                future  = QtConcurrent::run(this, &Scanner::FINScan,QString::fromStdString(dest.to_string()),port);
             }else if(scanType == "XMAS"){
-          future  = QtConcurrent::run(this, &Scanner::XMASScan,QString::fromStdString(dest.to_string()),port);
+                future  = QtConcurrent::run(this, &Scanner::XMASScan,QString::fromStdString(dest.to_string()),port);
             }
 
             threads.push_back(future);
@@ -101,10 +171,45 @@ void Scanner::Scan(QString scanType, IPv4Range destinations, QList<int> ports)
     QtConcurrent::run(this, &Scanner::_waitForScanComplete,threads);
 }
 
+//********************************************************************
+//
+// Set Interface Function
+//
+// This function sets the interface to be scanned. Uses a destination address to figure out the correct interface.
+//
+// Return Value
+// ------------
+// void
+//
+// Value Parameters
+// ----------------
+// QString      ip      the ip address that will be used to determine the correct interface
+//
+//*******************************************************************
 void Scanner::SetInterface(QString ip){
     iface = new NetworkInterface(IPv4Address(ip.toStdString()));
 }
 
+//********************************************************************
+//
+// Create and Send TCP Function
+//
+// This function creates the correct IP/TCP packet with the given flags set and sends it to the given address. It iwll return the response
+//
+// Return Value
+// ------------
+// std::unique_ptr<PDU>                     this is the response from the sent TCP packet
+//
+// Value Parameters
+// ----------------
+// QString      destAddress     ip address of where to send the packet
+// int          port            port of where to send the packet
+// bool         syn             enable/disable syn flag of TCP packet
+// bool         fin             enable/disable fin flag of TCP packet
+// bool         psh             enable/disable psh flag of TCP packet
+// bool         urg             enable/disable urg flag of TCP packet
+//
+//*******************************************************************
 std::unique_ptr<PDU> Scanner::_createAndSendTCP(QString destAddr, int port,bool syn, bool fin, bool psh, bool urg){
 
     if(iface == nullptr){
@@ -146,7 +251,23 @@ std::unique_ptr<PDU> Scanner::_createAndSendTCP(QString destAddr, int port,bool 
 
 
 
-////////TCP (Full Handshake) SCAN
+//********************************************************************
+//
+// TCP Scan Function
+//
+// TCP scan. This scan is the easiest to program and to understand. It attempts to complete a tcp handshake with the port. If the handshake is successful, port is open.
+// If unsuccessful, port is closed. This program uses Linux Sockets.
+//
+// Return Value
+// ------------
+// void
+//
+// Value Parameters
+// ----------------
+// QString      destAddress     ip address of where to send the packet
+// int          port            port of where to send the packet
+//
+//***********************************************************************
 void Scanner::TCPScan(QString destAddr, int port){
     int sock = 0;
     struct sockaddr_in serv_addr;
@@ -181,7 +302,24 @@ void Scanner::TCPScan(QString destAddr, int port){
 
 
 
-////////SYN SCAN
+//********************************************************************
+//
+// Syn Scan Function
+//
+// SYN scan: The most popular scanning technique. It sends the first packet in a tcp handshake by setting the SYN flag, and uses the response to detect if the port is open/closed/filtered. Because you are only sending part of a TCP handshake, this type of scanning requires root privilages to create custom packets.
+// If the response has a SYN and ACK flag the port is open and a service is running. If the response has either SYN or ACK flag but not both, the port is definitely open.
+// If the response has the RST flag on, the port is closed. Finally, no response is considered as the port being closed/filtered after, for our case, 4 retransmssions.
+//
+// Return Value
+// ------------
+// void
+//
+// Value Parameters
+// ----------------
+// QString      destAddress     ip address of where to send the packet
+// int          port            port of where to send the packet
+//
+//***********************************************************************
 bool Scanner::SynScan(QString destAddr, int port, int retries = 0){
 
 
@@ -192,7 +330,7 @@ bool Scanner::SynScan(QString destAddr, int port, int retries = 0){
     if(response == nullptr){
         //for tcp scan, retry a couple times on no response
         if(retries < 4){
-              log("WARNING - no response from: " + destAddr + ":" + QString::number(port) + " retransmitting to try again.", LOGLEVEL::WARNINGS);
+            log("WARNING - no response from: " + destAddr + ":" + QString::number(port) + " retransmitting to try again.", LOGLEVEL::WARNINGS);
             return SynScan(destAddr,port,++retries);
         }
         portInfo(destAddr,port,"CLOSED - no response / filtered",false);
@@ -239,8 +377,23 @@ bool Scanner::SynScan(QString destAddr, int port, int retries = 0){
     }
 }
 
-
-////////FIN SCAN
+//********************************************************************
+//
+// FIN Scan Function
+//
+// FIN scan. Simply sets the FIN flag of a tcp packet. This type of scan is more stealthy than a syn scan but the response cannot be as trusted as no response is considered an open port.
+// Microsoft Windows will label all ports as closed with this type of scan.
+//
+// Return Value
+// ------------
+// void
+//
+// Value Parameters
+// ----------------
+// QString      destAddress     ip address of where to send the packet
+// int          port            port of where to send the packet
+//
+//***********************************************************************
 void Scanner::FINScan(QString destAddr, int port){
 
 
@@ -281,7 +434,23 @@ void Scanner::FINScan(QString destAddr, int port){
 
 
 
-////////XMas SCAN
+//********************************************************************
+//
+// XMAS Scan Function
+//
+// XMAS scan. Sets the FIN, PSH, and URG flags of a tcp packet. Called XMAS scan because it lights the packet up like a christmas tree. Similar to the FIN scan,
+// this type of scan is more stealthy than a syn scan but the response cannot be as trusted as no response is considered an open port. Microsoft Windows will label all ports as closed with this type of scan.
+//
+// Return Value
+// ------------
+// void
+//
+// Value Parameters
+// ----------------
+// QString      destAddress     ip address of where to send the packet
+// int          port            port of where to send the packet
+//
+//***********************************************************************
 void Scanner::XMASScan(QString destAddr, int port){
 
 
@@ -318,6 +487,28 @@ void Scanner::XMASScan(QString destAddr, int port){
         return;
     }
 }
+
+//********************************************************************
+//
+// Custom Packet Function
+//
+// This function allows a user to specify a custom packet to be sent with custom values for syn, fin, psh, urg flags. Then it will emit the response
+//
+// Return Value
+// ------------
+// void
+//
+// Value Parameters
+// ----------------
+// QString      destAddress     ip address of where to send the packet
+// int          port            port of where to send the packet
+// bool         syn             enable/disable syn flag of TCP packet
+// bool         fin             enable/disable fin flag of TCP packet
+// bool         psh             enable/disable psh flag of TCP packet
+// bool         urg             enable/disable urg flag of TCP packet
+// int          numberOfPackets number of times to send the packet
+//
+//***********************************************************************
 void Scanner::CustomPacket(QString destAddr, int port,bool syn, bool fin, bool psh, bool urg,int numberOfPackets){
 
     for(int i = 0; i < numberOfPackets; i ++){
@@ -326,7 +517,7 @@ void Scanner::CustomPacket(QString destAddr, int port,bool syn, bool fin, bool p
         emit PortInfo("Sending TCP Packet to " + destAddr + +":" + QString::number(port) + " with | SYN: " + QString::number(syn) + " FIN: " + QString::number(fin) + " PSH: " + QString::number(psh) + " URG: " + QString::number(urg));
         QString portInfo = "";
         if(response == nullptr){
-        portInfo = "Received no response.";
+            portInfo = "Received no response.";
         }else{
             try {
 

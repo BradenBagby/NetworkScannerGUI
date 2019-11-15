@@ -31,15 +31,62 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
+//********************************************************************
+//
+// Log function (slot)
+//
+// This function is called from the Scanner's log Signal and simply displays the QString parameter to the log textBrowser.
+//
+// Return Value
+// ------------
+// void
+//
+// Value Parameters
+// ----------------
+//QString       log   what to log
+//
+//*******************************************************************
 void MainWindow::Log(QString log){
     cout << log.toStdString() << endl;
     ui->textBrowser_log->append(log);
 }
 
+//********************************************************************
+//
+// PortInfo function (slot)
+//
+// This function is called from the Scanner's PortInfo Signal and simply displays the QString parameter to the portInfo textBrowser.
+//
+// Return Value
+// ------------
+// void
+//
+// Value Parameters
+// ----------------
+//QString       info   what to display
+//
+//*******************************************************************
 void MainWindow::PortInfo(QString info){
     cout << info.toStdString() << endl;
     ui->textBrowser_scanInfo->append(info);
 }
+
+
+//********************************************************************
+//
+// Log function (slot)
+//
+// This function is called from the Scanner's ScanComplete Signal and displays information to the log textBrowser and the portInfo textBrowser
+//
+// Return Value
+// ------------
+// void
+//
+// Value Parameters
+// ----------------
+//QString       info   info on completion of scan
+//
+//*******************************************************************
 void MainWindow::ScanComplete(QString info){
     ui->textBrowser_scanInfo->append(info);
     QString scanType = ui->comboBox_scanType->currentText();
@@ -52,11 +99,21 @@ void MainWindow::ScanComplete(QString info){
     ui->groupBox_displayOptions->setEnabled(true);
 }
 
-void MainWindow::on_pushButton_clicked()
+
+//********************************************************************
+//
+// Scan function
+//
+// When user clicks scanButton. This pulls the info from the UI and starts the scan
+//
+// Return Value
+// ------------
+// void
+//
+//
+//*******************************************************************
+void MainWindow::on_scanButton_clicked()
 {
-
-
-
     QString scanType = ui->comboBox_scanType->currentText();
     ui->textBrowser_scanInfo->append("--------------NEW SCAN: <b>" + scanType +"</b>--------------------");
     ui->textBrowser_log->append("--------------NEW SCAN: <b>" + scanType +"</b>--------------------");
@@ -110,7 +167,20 @@ void MainWindow::on_pushButton_clicked()
 
 }
 
+
+//********************************************************************
+//
+// ScanType combo box change function
+//
 //sets the cool info for the user to learn about network scanning
+//
+// Return Value
+// ------------
+// void
+//
+//
+//*******************************************************************
+
 void MainWindow::on_comboBox_scanType_currentIndexChanged(const QString &arg1)
 {
     QString currentText = ui->comboBox_scanType->currentText();
@@ -129,37 +199,82 @@ void MainWindow::on_comboBox_scanType_currentIndexChanged(const QString &arg1)
     ui->textBrowser_coolInfo->setText(helpText);
 }
 
+//********************************************************************
+//
+// LogLevel combobox Change Function
+//
+// sets the correct loglevel for the scanner
+//
+// Return Value
+// ------------
+// void
+//
+//
+//*******************************************************************
 void MainWindow::on_comboBox_logLevel_currentTextChanged(const QString &current)
 {
     scanner.logLevel = (current == "VERBOS" ? ::VERBOS : (current == "ERRORS" ? ::ERRORS : ::WARNINGS));
 
 }
 
+//********************************************************************
+//
+// Open Ports Only CheckBox Function
+//
+// sets wheter scanner should display only open ports or not
+//
+// Return Value
+// ------------
+// void
+//
+//
+//*******************************************************************
 void MainWindow::on_checkBox_openPortsOnly_stateChanged(int arg1)
 {
     scanner.displayOnlyOpenPorts = arg1;
 }
 
+//********************************************************************
+//
+// SendTCP Function
+//
+// pulls correct values from UI and sends a custom tcp packet based on these values.
+//
+// Return Value
+// ------------
+// void
+//
+//
+//*******************************************************************
 void MainWindow::on_pushButton_sendTCP_clicked()
 {
+    //get the flags from user input
     bool syn = ui->checkBox_custom_syn->isChecked();
     bool fin = ui->checkBox_custom_fin->isChecked();
     bool psh = ui->checkBox_custom_psh->isChecked();
     bool urg = ui->checkBox_custom_urg->isChecked();
 
+    //get destination info
     QString destination = ui->textEdit_custom_destination->toPlainText();
     int packetCount = ui->textEdit_custom_packetCount->toPlainText().toInt();
     int port = ui->textEdit_custom_port->toPlainText().toInt();
 
+    //disable ui
     ui->groupBox_configureScan->setEnabled(false);
     ui->groupBox_custom->setEnabled(false);
     ui->groupBox_displayOptions->setEnabled(false);
     ui->groupBox_custom->setEnabled(false);
     qApp->processEvents(); //update ui
+
+    //send packets
     scanner.CustomPacket(destination,port,syn,fin,psh,urg,packetCount);
+
+    //enable ui
     ui->groupBox_configureScan->setEnabled(true);
     ui->groupBox_custom->setEnabled(true);
     ui->groupBox_displayOptions->setEnabled(true);
     ui->groupBox_custom->setEnabled(true);
 
 }
+
+
