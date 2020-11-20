@@ -1,0 +1,63 @@
+Network Scanner GUI
+
+
+---------------CONTENTS
+
+./NetworkScannerGUI
+	The source code/Qt project
+
+./"C++ GUI Network Scanner.pptx"
+	The powerpoint
+
+./"Bagby Secure Computing Final Project Paper.pdf"
+	The report
+
+
+
+
+---------------PROGRAM
+
+
+Network Scanner GUI allows a user to conduct scans of type: SYN, TCP HANDSHAKE, FIN, and XMAS using a graphical user interface.
+It also allows users to run a custom TCP packet with customized flags.
+
+
+
+---------------Dependencies-----------------------
+
+Tins:
+Network Scanner GUI uses libtins for constructing custom raw packets.
+installation instructions can be found on the github
+github: http://libtins.github.io/
+
+Qt:
+Network Scanner GUI is built using Qt and qmake. To install qt on linux run 
+$sudo apt-get qt5-default
+
+---------------Installing----------------------
+
+Two options:
+1. Using Qt Creator (Easy)
+2. Using qmake with terminal
+
+1. Qt Creator
+	1. Open ./NetworkScannerGUI/NetworkScannerGUI.pro with qt creator
+	2. Build and run
+
+2. Terminal
+	1. Use qmake to generate make file:
+		$qmake NetworkScannerGUI.pro -spec linux-g++ CONFIG+=debug CONFIG+=qml_debug && /usr/bin/make qmake_all
+
+			Note: if "qmake: could not find a Qt installation of ''" You are using the wrong version of qmake. Make sure you use the right version. For example, my version 
+			full path is "/home/bradenbagby/Qt/5.11.1/gcc_64/bin/qmake". You may need to specify the absolute path to qmake when running the command
+
+	2. Run make using the newly generated make file
+		$make
+
+Note: if there are errors trying to run qmake make sure you're permissions on all of the files are correct
+
+	3. Make generates NetworkScannerGUI executable in the directory
+
+----------------------------------------------
+
+
